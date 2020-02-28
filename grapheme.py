@@ -15,7 +15,10 @@
 #   - color of the printed grapheme is currently determined at calltime
 #       by the calling function. This could get changed to an object attribute
 #       that would need to be set at time of creation, or otherwise. 
-
+#
+#   - if I wanted to add the ability to randomly colorize graphemes for trials,
+#     I could probably just do this with a method that shuffles/picks from
+#     the dict SYN_COLORS
 
 import pygame
 
@@ -73,8 +76,12 @@ class Grapheme:
     }
 
     @classmethod
-    def set_window(cls,window_from_parent):
+    def set_window(cls, window_from_parent):
         cls.window = window_from_parent
+        
+    @classmethod
+    def set_is_colored(cls, is_colored):
+        cls.is_colored = is_colored
 
 
     def __init__(self, char):
@@ -98,11 +105,13 @@ class Grapheme:
         if temp:
             self.__color = Grapheme.SYN_COLORS.get(str(self.__char).upper())     
 
-    def draw_grapheme(self, x, y, is_colored=False):
+    def draw(self, x, y):
         """ draws the character to the display using modules 
             in the uagame library. """
+        # Note: is_colored is now a class attribute, rather than a parameter
 
         # save previous window attributes so they can be restored afterwards
+        old_bg_color = Grapheme.window.get_bg_color()
         old_font_color = Grapheme.window.get_font_color()
         old_font_size = Grapheme.window.get_font_size()
         # old_font_name = Grapheme.window.get_font_name()
@@ -110,7 +119,7 @@ class Grapheme:
 
         #Grapheme.window.set_font_name(self.__font)
         Grapheme.window.set_font_size(self.__size)
-        if is_colored:
+        if Grapheme.is_colored:
             Grapheme.window.set_font_color(self.__color)   
         else:
             Grapheme.window.set_font_color(DEFAULT_FONT_COLOR)   
@@ -118,6 +127,7 @@ class Grapheme:
         Grapheme.window.draw_string(self.__char, x, y)   
 
         # Restore window attributes     
+        Grapheme.window.set_bg_color(old_bg_color)
         Grapheme.window.set_font_color(old_font_color)
         Grapheme.window.set_font_size(old_font_size)
         # Grapheme.window.set_font_name(old_font_name)
