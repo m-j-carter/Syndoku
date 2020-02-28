@@ -11,6 +11,7 @@
 ## Class utilizes methods in the uagame library
 
 # Notes/Changelog:
+#   - draw_grapheme() now saves and restores the window's prior attributes. 
 #   - color of the printed grapheme is currently determined at calltime
 #       by the calling function. This could get changed to an object attribute
 #       that would need to be set at time of creation, or otherwise. 
@@ -79,6 +80,8 @@ class Grapheme:
     def __init__(self, char):
         self.__char = str(char)        # self.__char is a string of len 1 (python doesn't have char types)
         self.__color = DEFAULT_FONT_COLOR         # initialize as default color
+        self.__size = DEFAULT_FONT_SIZE
+        self.__font = DEFAULT_FONT_NAME
         self.__generate_color()
 
     def __str__(self):
@@ -98,14 +101,26 @@ class Grapheme:
     def draw_grapheme(self, x, y, is_colored=False):
         """ draws the character to the display using modules 
             in the uagame library. """
-        # Grapheme.window.set_font_name(DEFAULT_FONT_NAME)
-        # Grapheme.window.set_font_size(DEFAULT_FONT_SIZE)
+
+        # save previous window attributes so they can be restored afterwards
+        old_font_color = Grapheme.window.get_font_color()
+        old_font_size = Grapheme.window.get_font_size()
+        # old_font_name = Grapheme.window.get_font_name()
+        # ^^^ uagame currently doesn't support get_font_name()
+
+        #Grapheme.window.set_font_name(self.__font)
+        Grapheme.window.set_font_size(self.__size)
         if is_colored:
-            Grapheme.window.set_font_color(self.letter_colors[index])   
+            Grapheme.window.set_font_color(self.__color)   
         else:
             Grapheme.window.set_font_color(DEFAULT_FONT_COLOR)   
 
-        Grapheme.window.draw_string(self.__char, x, y)        
+        Grapheme.window.draw_string(self.__char, x, y)   
+
+        # Restore window attributes     
+        Grapheme.window.set_font_color(old_font_color)
+        Grapheme.window.set_font_size(old_font_size)
+        # Grapheme.window.set_font_name(old_font_name)
 
     def get_grapheme(self):
         """ returns the grapheme character """
