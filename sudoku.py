@@ -15,6 +15,7 @@
 #       - I'm thinking instead of polling each cell, on mouseclick the position
 #           will be saved and handed to a method which will find the 
 #           corresponding cell and return it. 
+#   - character entry is funky right now, it enters in the cell above
 
 
 
@@ -264,18 +265,18 @@ class Cell:
         
         self.__draw_rect()
         x, y = self.__get_char_xy()
+        # Cell.window.update()
         self.__char.draw(Cell.window.get_surface(), x, y)
+        # Cell.window.update()
 
         # Cell.window.set_bg_color(old_bg_color)
     
     def __get_char_xy(self):
         """ calculates and returns a tuple of the cell's character's 
-            (x,y) coordinates. 
-            char's x = cell's x + ((cell size + letter width) / 2)
-            char's y = cell's y - ((cell size + letter height) / 2)
+            (x,y) coordinates.         
         """
-        x = int(self.__x + ((self.__size + self.__char.get_width()) / 2))
-        y = int(self.__y - ((self.__size + self.__char.get_font_height()) / 2))
+        x = int(self.__x + ((self.__size - self.__char.get_width()) / 2))
+        y = int(self.__y + ((self.__size - self.__char.get_font_height()) / 2))
         return (x,y)
 
     def __draw_rect(self):
