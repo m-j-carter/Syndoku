@@ -64,15 +64,41 @@ class Grapheme:
     "Y":"yellow",
     "Z":"black",
     """    
+#         "A":"red",
+#         "B":"blue",
+#         "E":"green",
+#         "G":"green",
+#         "L":"yellow",
+#         "N":"orange",
+#         "Y":"yellow"
 
     SYN_COLORS = {
         "A":"red",
         "B":"blue",
+        "C":"yellow",
+        "D":"blue",
         "E":"green",
+        "F":"green",
         "G":"green",
+        "H":"orange",
+        "I":"white",
+        "J":"orange",
+        "K":"orange",
         "L":"yellow",
+        "M":"red",
         "N":"orange",
-        "Y":"yellow"
+        "O":"white",
+        "P":"purple",
+        "Q":"purple",
+        "R":"red",
+        "S":"yellow",
+        "T":"blue",
+        "U":"orange",
+        "V":"purple",
+        "W":"blue",
+        "X":"black",
+        "Y":"yellow",
+        "Z":"black",
     }
     
     is_colored = False
@@ -94,6 +120,7 @@ class Grapheme:
         self.__color = DEFAULT_FONT_COLOR         # initialize as default color
         self.__font_size = DEFAULT_FONT_SIZE
         self.set_font(DEFAULT_FONT_NAME)
+        self.__text_image = None
         self.__generate_color()
 
     def __str__(self):
@@ -106,7 +133,8 @@ class Grapheme:
         """ If the grapheme is in SYN_COLORS, this generates 
             and assigns the synesthetic color to the grapheme. 
         """
-
+        if not Grapheme.is_colored:
+            return
         temp = Grapheme.SYN_COLORS.get(str(self.__char).upper())
         if temp:
             color_name = Grapheme.SYN_COLORS.get(str(self.__char).upper())    
@@ -115,39 +143,21 @@ class Grapheme:
     def draw(self, surface, x, y):
         """ draws the character to the display in its uniquely-specified 
             color, font, and size using modules in the uagame library.
+            - To improve performance, it only renders the text image if it
+                has not already been created. 
         """
         # Note: is_colored is now a class attribute, rather than a parameter
-        # font.render(text, antialias, color, background=None)
-        text_image = self.__font.render(self.__char,
+        if not self.__char:
+            return
+        # if not self.__text_image: 
+        # font.render(text, antialias, color, background=None)       
+        self.__text_image = self.__font.render(self.__char,
                                         True, 
                                         self.__color)
-        surface.blit(text_image, (x, y))
+
+        surface.blit(self.__text_image, (x, y))
 
 
-
-
-
-        # save previous window attributes so they can be restored afterwards
-        # old_bg_color = Grapheme.window.get_bg_color()
-        # old_font_color = Grapheme.window.get_font_color()
-        # old_font_height = Grapheme.window.get_font_height()
-        # old_font = Grapheme.window.get_font()
-
-        # Grapheme.window.set_font(self.__font)
-        # Grapheme.window.set_font_size(self.__font_size)
-        
-        # if Grapheme.is_colored:
-        #     Grapheme.window.set_font_color(self.__color)   
-        # else:
-        #     Grapheme.window.set_font_color(DEFAULT_FONT_COLOR)   
-
-        # Grapheme.window.draw_string(self.__char, x, y)   
-
-        # Restore window attributes     
-        # Grapheme.window.set_bg_color(old_bg_color)
-        # Grapheme.window.set_font_color(old_font_color)
-        # Grapheme.window.set_font_size(old_font_height)
-        # Grapheme.window.set_font(old_font)
 
     def get_grapheme(self):
         """ returns the grapheme character """

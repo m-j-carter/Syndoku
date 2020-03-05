@@ -9,36 +9,37 @@
 # Notes/Changelog:
 #   - not sure if I still need solution_set since solution is now a list of Grapheme objects 
 #
-#   - cell coloring and character entry now working, but cells are only 
-#       editable while hovered (ie. not clicked). Probably has something to
-#       do with the update board logic
+#   - coloring valid segments currently works, but doesn't automatically turn
+#       off when made invalid. Gotta do some thinking on how to make this work well
 # 
-#   - I Kind of want to add drag-drop abilities too 
+#   - I kind of want to add drag-drop abilities too 
 # 
-#   - The board needs to display cells as groups of 9
+#   - currently has no functionality to permit setting is_colored for 
+#       character presentation.
 # 
-#   - the update_cells() method needs a significant overhaul. 
-#       - I'm thinking instead of polling each cell, on mouseclick the position
-#           will be saved and handed to a method which will find the 
-#           corresponding cell and return it. 
+#   - updating cells now uses a queue called update_queue, which stores the
+#       changed cells until they are drawn. 
 
 
 from grapheme import Grapheme
-from cell import Cell
 from uagame import Window
 import pygame as pg
+import time
+import queue
 
-FRAMERATE = 60
+FRAMERATE = 30
 
-BOARD_ORIGIN_X = 20            # the top-left corner of the board 
-BOARD_ORIGIN_Y = 50    
-SOLUTION_ORIGIN_X = 150         # top-left corner of the solution string
-SOLUTION_ORIGIN_Y = 5
+BOARD_ORIGIN_X = 70            # the top-left corner of the board 
+BOARD_ORIGIN_Y = 70    
+SOLUTION_ORIGIN_X = 200         # top-left corner of the solution string
+SOLUTION_ORIGIN_Y = 15
 
 CELL_SIZE = 40
 CELL_COLOR_DEFAULT = pg.Color("white")
-CELL_COLOR_HOVERED = pg.Color("orange")
-CELL_COLOR_CLICKED = pg.Color("blue")
+CELL_COLOR_HOVERED = pg.Color("lightyellow")
+CELL_COLOR_CLICKED = pg.Color("gold")
+CELL_COLOR_VALID = pg.Color("lightgreen")
+CELL_COLOR_INVALID = pg.Color("red")
 CELL_BORDER_COLOR_A = pg.Color("grey")
 CELL_BORDER_COLOR_B = pg.Color("black")
 CELL_BORDER_WIDTH = 1
@@ -91,17 +92,18 @@ class Sudoku:
         self.__window = window
         self.__clock = pg.time.Clock()
         self.__quit = False
+        self.__complete = False
         self.__delete_char = False
         self.__key_pressed_str = ""
         self.__lmb_pressed = False
         self.__lmb_press_pos = (0,0)        # coordinates of the cursor at last mouseclick
         self.__mouse_pos = (0,0)
         self.__clicked_cell = None
+        self.__update_queue = queue.SimpleQueue()
 
         # initialize the board:
         self.__board = [[None for i in range(self.__board_size)] for j in range(self.__board_size)] 
         self.__create_board()
-    
 
     def __create_board(self):
         """ create a board that is n*n cells """
@@ -127,21 +129,29 @@ class Sudoku:
                 # calculate x,y of the cell
                 x = BOARD_ORIGIN_X + (col * CELL_SIZE)
                 y = BOARD_ORIGIN_Y + (row * CELL_SIZE)
-
+                # create the cell
                 self.__board[row][col] = Cell(border_color, x, y) 
+                # add the cell to the queue to be updated
+                self.__update_queue.put(self.__board[row][col])
 
+    def manually_set_cell(self, row, col, character):
+        """ Manually sets the cell at the specified position to the character
+            specified. Use this iteratively to create an initial game board.
+        """ 
+        self.__board[row][col].set_char(character)
+
+### Methods for drawing and updating the game: ###
 
     def play(self):
         """ Handles the entire game loop"""
-        while not self.__quit:
+        while not self.__quit and not self.__complete:
             self.__check_events()
             self.__update_board()
-            self.__window.clear()
             self.__draw_solution()
             self.__draw_board()
+            self.__check_complete()
             self.__window.update()
             self.__clock.tick(FRAMERATE)    
-
 
     def __draw_solution(self):
         """ draw the solution/hint """
@@ -154,13 +164,11 @@ class Sudoku:
             # dynamically adapt x based on width of the character
             x += item.get_width()           
             
-
     def __draw_board(self):
-        """ draw each cell """
-        for row in self.__board:
-            for cell in row:
-                cell.draw_cell()
-
+        """ draw each cell that has been updated """
+        while not self.__update_queue.empty():
+            cell = self.__update_queue.get()
+            cell.draw_cell()
 
     def __check_events(self):
         """ Checks for, and handles, all events caused by player interaction """
@@ -179,13 +187,11 @@ class Sudoku:
                 # will treat both LMB and RMB as clicks
                 self.__lmb_pressed = True
                 self.__lmb_press_pos = pg.mouse.get_pos()
-                print("LMB Pressed")
 
             if event.type == pg.KEYUP:
                 self.__handle_keyup(event.key)
             
     def __handle_keyup(self, key):
-        print(pg.key.name(key))   ## DEBUG ##
         if key == pg.K_BACKSPACE or key == pg.K_DELETE:
             # delete the active character
             self.__delete_char = True
@@ -197,7 +203,6 @@ class Sudoku:
                     ch = grapheme.get_grapheme()
                 if pg.key.name(key) == ch:
                     self.__key_pressed_str = pg.key.name(key)
-
 
     def __update_board(self):
         """ Checks and updates each cell to change their color when 
@@ -220,23 +225,30 @@ class Sudoku:
                 else:
                     # if it isn't the clicked cell, make it the default 
                     # color. Otherwise, leave it. 
-                    if cell is not self.__clicked_cell:
+                    if cell is not self.__clicked_cell and cell.get_color() not in (
+                                             CELL_COLOR_DEFAULT,
+                                             CELL_COLOR_VALID, 
+                                             CELL_COLOR_INVALID
+                                             ):
+                        self.__update_queue.put(cell)
                         cell.change_color(CELL_COLOR_DEFAULT)
 
     def __handle_cell_clicked(self, cell):
         """ Carry out the changes for when a specified cell has been clicked on """
         # only one cell can be selected at once, so the variable __clicked_cell 
         # keeps track of which is currently selected. 
+
+        self.__update_queue.put(cell)
+
         if cell is not self.__clicked_cell:
             cell.click()
             # unclick the old cell, then click the new one.
             if self.__clicked_cell:
+                self.__clicked_cell.change_color(CELL_COLOR_DEFAULT)
+                self.__update_queue.put(self.__clicked_cell)
                 self.__clicked_cell.unclick()
             self.__clicked_cell = cell
-
-    def __handle_cell_hovered(self, cell):
-        """ Carry out the changes for when a specified cell is hovered over """
-        cell.change_color(CELL_COLOR_HOVERED)
+        
         if not cell.get_char() and self.__key_pressed_str:
             # if it's empty, set its character to what the player entered
             cell.set_char(self.__key_pressed_str)
@@ -244,29 +256,156 @@ class Sudoku:
             # otherwise, if del/backspace was pressed, empty the cell
             cell.set_char(None)
 
-
-# Logic for checking if complete:
-
-    def __col_is_complete(self, col):
-        # TODO
-        pass
-
-    def __row_is_complete(self, row):
-        # TODO
-        pass
-
-    def __square_is_complete(self, row, col, edge):
-        """ a square is represented by its top-left cell 
-            and its edge length
+    def __handle_cell_hovered(self, cell):
+        """ Carry out the changes for when a specified cell is hovered over """
+        self.__update_queue.put(cell)
+        cell.change_color(CELL_COLOR_HOVERED)
+      
+### Sudoku Game Logic: ###
+    
+    def __check_complete(self):
+        """ check each row, column, and subgrid to see if the game board has 
+            been solved. 
+            For each row/column/subgrid that is solved, update its color.
+            If all rows, columns, and subgrids are solved, set 
+            is_complete to True. 
         """
-        # TODO
-        pass
+        self.__is_complete = True
+        # check rows and columns
+        for i in range(self.__board_size):
+            if not (self.__segment_is_complete(self.__board[i][0:]) or \
+                    self.__segment_is_complete(self.__board[0:][i])):
+                self.__is_complete = False
+        
+        # check subgrids
+        for x in range(0, self.__board_size, 3):
+            for y in range(0, self.__board_size, 3):
+                if not self.__subgrid_is_complete(x, y, 3):
+                    self.__is_complete = False
+        
+
+
+    def __segment_is_complete(self, cell_list):
+        """ Checks if the row/column is complete and valid by removing valid
+            cells as it finds them. In doing so, it will also report duplicates
+            as an invalid row/column. 
+        """
+        temp_set = self.__solution_set.copy()
+        for cell in cell_list:
+            if cell.get_char() not in temp_set:
+                return False
+            else:
+                # print("cell",cell.get_char(),"found in set")
+                temp_set.remove(cell.get_char())
+        if len(temp_set) > 0:
+            # then not all elements were removed, meaning that the row/column
+            # wasn't fully occupied.
+            return False
+        
+        # Since they're valid, recolor the cells
+        # print("valid segment!")
+        for cell in cell_list:
+            cell.change_color(CELL_COLOR_VALID)
+            self.__update_queue.put(cell)
+
+        return True
+
+    def __subgrid_is_complete(self, x, y, edge):
+        """ a square is represented by its top-left cell 
+            and its edge length.
+        """
+        subgrid = []
+        for i in range(edge):
+            for j in range(edge):
+                subgrid.append(self.__board[x+i][y+j])
+        return self.__segment_is_complete(subgrid)
+
+class Cell:
+    """ Objects represent a cell of the game board. Cells can be either empty
+        or filled with an object of class Grapheme. """
+    
+    @classmethod
+    def set_window(cls, window_from_parent):
+        cls.window = window_from_parent
+        Grapheme.set_window(window_from_parent)
+
+    def __init__(self, border_color, x, y):
+        # I actually don't need self.__x or sel.__y, but methods still use it
+        self.__x = x
+        self.__y = y
+        self.__border_color = border_color
+        self.__size = CELL_SIZE
+        self.__rect = pg.Rect((self.__x, self.__y), 
+                              (self.__size, self.__size))
+        self.__bg_color = CELL_COLOR_DEFAULT
+        self.__char = Grapheme(None)
+        self.__is_clicked = False
+
+    def draw_cell(self):
+        """ Draw the cell, and draw the char (if applicable) """
+        self.__draw_rect()
+        x, y = self.__get_char_xy()
+        self.__char.draw(Cell.window.get_surface(), x, y)
+    
+    def __get_char_xy(self):
+        """ calculates and returns a tuple of the cell's character's 
+            (x,y) coordinates.         
+        """
+        x = int(self.__x + ((self.__size - self.__char.get_width()) / 2))
+        y = int(self.__y + ((self.__size - self.__char.get_font_height()) / 2))
+        return (x,y)
+
+    def __draw_rect(self):
+        """ Helper method to draw the cell with border """
+        surface = Cell.window.get_surface()
+        
+        surface.fill(self.__border_color, self.__rect)
+        surface.fill(self.__bg_color, 
+                     self.__rect.inflate(-CELL_BORDER_WIDTH*2, 
+                                         -CELL_BORDER_WIDTH*2))
+
+    def change_color(self, color):
+        """ Changes the background color of the cell.
+            Expects the argument color to be a pygame-compatible string or RGB.    
+        """
+        self.__bg_color = color
+
+    def get_color(self):
+        """ Returns the cell's current pygame.Color object """
+        return self.__bg_color
+
+    def set_char(self, char):
+        self.__char = Grapheme(char)
+
+    def get_char(self):
+        if self.__char:
+            return self.__char.get_grapheme()
+        else:
+            return None
+    
+    def check_collides(self, point):
+        """ returns True if the point collides with the cell.
+            Point is a tuple of the coordinates (x,y) """
+        return self.__rect.collidepoint(point)
+
+    def click(self):
+        """ sets is_clicked to True and changes color when clicked """
+        if not self.__is_clicked:
+            self.__is_clicked = True
+            self.change_color(CELL_COLOR_CLICKED) 
+
+    def unclick(self):
+        """ unclicks the cell, changing its colour back """
+        # Note: is_clicked currently does nothing, just acts as a flag
+        self.__is_clicked = False
+        self.change_color(CELL_COLOR_DEFAULT)
+
 
 
 # For debugging only, since the class is only supposed to be called from main.py
 if __name__ == "__main__":
     test_window = Window("Test Sudoku", 500, 500)
     test_window.set_auto_update(False)
-    test_game = Sudoku(test_window, 'OITERSCLA')
+    test_game = Sudoku(test_window, 'ABCDEFGHI')
     test_game.play()
     pg.quit()
