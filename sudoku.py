@@ -9,17 +9,22 @@
 # Notes/Changelog:
 #   - not sure if I still need solution_set since solution is now a list of Grapheme objects 
 #
-#   - colors of cells not currently changing, not sure why not.
-#   - colors are also reversed for some reason
+#   - cell coloring and character entry now working, but cells are only 
+#       editable while hovered (ie. not clicked). Probably has something to
+#       do with the update board logic
+# 
+#   - I Kind of want to add drag-drop abilities too 
+# 
+#   - The board needs to display cells as groups of 9
+# 
 #   - the update_cells() method needs a significant overhaul. 
 #       - I'm thinking instead of polling each cell, on mouseclick the position
 #           will be saved and handed to a method which will find the 
 #           corresponding cell and return it. 
-#   - character entry is funky right now, it enters in the cell above
-
 
 
 from grapheme import Grapheme
+from cell import Cell
 from uagame import Window
 import pygame as pg
 
@@ -34,12 +39,27 @@ CELL_SIZE = 40
 CELL_COLOR_DEFAULT = pg.Color("white")
 CELL_COLOR_HOVERED = pg.Color("orange")
 CELL_COLOR_CLICKED = pg.Color("blue")
-CELL_BORDER_COLOR = pg.Color("black")
-CELL_BORDER_WIDTH = 2
+CELL_BORDER_COLOR_A = pg.Color("grey")
+CELL_BORDER_COLOR_B = pg.Color("black")
+CELL_BORDER_WIDTH = 1
 WINDOW_BACKGROUND_COLOR = pg.Color("white")
 DEFAULT_FONT_COLOR = pg.Color("black")
 
 IGNORE_CAPS = True
+
+# BORDER_COLOR_MATRIX is just a temporary solution for choosing border colors.
+# It should actually be calculated so that it is scalable. 
+BORDER_COLOR_MATRIX = [[0,0,0,1,1,1,0,0,0],
+                       [0,0,0,1,1,1,0,0,0],
+                       [0,0,0,1,1,1,0,0,0],
+                       [1,1,1,0,0,0,1,1,1],
+                       [1,1,1,0,0,0,1,1,1],
+                       [1,1,1,0,0,0,1,1,1],
+                       [0,0,0,1,1,1,0,0,0],
+                       [0,0,0,1,1,1,0,0,0],
+                       [0,0,0,1,1,1,0,0,0],
+                       ]
+
 
 # # If using numbers:
 # ALLOWABLE_INPUTS = [pg.K_0, pg.K_1, pg.K_2, pg.K_3, pg.K_4, 
@@ -95,15 +115,21 @@ class Sudoku:
         screen_rect = self.__window.get_surface()
         screen_rect.fill(WINDOW_BACKGROUND_COLOR)
         
-
         for row in range(self.__board_size):
             for col in range(self.__board_size):
-            
+                
+                # border color is calculated by ...
+                if BORDER_COLOR_MATRIX[row][col]:
+                    border_color = CELL_BORDER_COLOR_A
+                else:
+                    border_color = CELL_BORDER_COLOR_B
+
                 # calculate x,y of the cell
                 x = BOARD_ORIGIN_X + (col * CELL_SIZE)
                 y = BOARD_ORIGIN_Y + (row * CELL_SIZE)
 
-                self.__board[row][col] = Cell(x, y) 
+                self.__board[row][col] = Cell(border_color, x, y) 
+
 
     def play(self):
         """ Handles the entire game loop"""
@@ -235,94 +261,6 @@ class Sudoku:
         """
         # TODO
         pass
-
-
-class Cell:
-    """ Objects represent a cell of the game board. Cells can be either empty
-        or filled with an object of class Grapheme. """
-    
-    @classmethod
-    def set_window(cls, window_from_parent):
-        cls.window = window_from_parent
-        Grapheme.set_window(window_from_parent)
-
-    def __init__(self, x, y):
-        self.__x = x
-        self.__y = y
-        self.__size = CELL_SIZE
-        self.__rect = pg.Rect((self.__x, self.__y), 
-                              (self.__size, self.__size))
-        self.__bg_color = CELL_COLOR_DEFAULT
-        self.__char = Grapheme(None)
-        self.__is_clicked = False
-
-    def draw_cell(self):
-        """ Draw the cell, and draw the char (if applicable) """
-        # Rect((left, top), (width, height))
-
-        # old_bg_color = Cell.window.get_bg_color()
-        # Cell.window.set_bg_color(self.__bg_color)
-        
-        self.__draw_rect()
-        x, y = self.__get_char_xy()
-        # Cell.window.update()
-        self.__char.draw(Cell.window.get_surface(), x, y)
-        # Cell.window.update()
-
-        # Cell.window.set_bg_color(old_bg_color)
-    
-    def __get_char_xy(self):
-        """ calculates and returns a tuple of the cell's character's 
-            (x,y) coordinates.         
-        """
-        x = int(self.__x + ((self.__size - self.__char.get_width()) / 2))
-        y = int(self.__y + ((self.__size - self.__char.get_font_height()) / 2))
-        return (x,y)
-
-    def __draw_rect(self):
-        """ Helper method to draw the cell with border """
-        # pg.draw.rect(Cell.window.get_surface(), CELL_BORDER_COLOR, self.__rect, CELL_BORDER_WIDTH)
-        # pg.draw.rect(Cell.window.get_surface(), self.__bg_color, self.__rect)
-
-        surface = Cell.window.get_surface()
-        
-        surface.fill(CELL_BORDER_COLOR, self.__rect)
-        surface.fill(self.__bg_color, 
-                     self.__rect.inflate(-CELL_BORDER_WIDTH*2, 
-                                         -CELL_BORDER_WIDTH*2))
-
-    def change_color(self, color):
-        """ Changes the background color of the cell.
-            Expects the argument color to be a pygame-compatible string or RGB.    
-        """
-        self.__bg_color = color
-
-    def set_char(self, char):
-        self.__char = Grapheme(char)
-
-    def get_char(self):
-        if self.__char:
-            return self.__char.get_grapheme()
-        else:
-            return None
-    
-    def check_collides(self, point):
-        """ returns True if the point collides with the cell.
-            Point is a tuple of the coordinates (x,y) """
-        return self.__rect.collidepoint(point)
-
-    def click(self):
-        """ sets is_clicked to True and changes color when clicked """
-        if not self.__is_clicked:
-            self.__is_clicked = True
-            self.change_color(CELL_COLOR_CLICKED) 
-
-    def unclick(self):
-        """ unclicks the cell, changing its colour back """
-        # Note: is_clicked currently does nothing, just acts as a flag
-        self.__is_clicked = False
-        self.change_color(CELL_COLOR_DEFAULT)
-
 
 
 # For debugging only, since the class is only supposed to be called from main.py
