@@ -12,10 +12,10 @@
 
 # Notes/Changelog:
 #   - draw_grapheme() now saves and restores the window's prior attributes. 
-#   - is_colored is currently a class attribute, meaning all letters are 
-#       either colored or not. This could be changed to an object attribute
-#       that is assigned at time of creation, or otherwise. 
-#
+# 
+#   - is_colored has been changed to an object attribute, assigned using
+#       the method set_colored()
+# 
 #   - if I wanted to add the ability to randomly colorize graphemes for trials,
 #     I could probably just do this with a method that shuffles/picks from
 #     the dict SYN_COLORS
@@ -99,17 +99,27 @@ class Grapheme:
         "X":"black",
         "Y":"yellow",
         "Z":"black",
+        # just for testing, not based off anything:
+        "1":"red",
+        "2":"yellow",
+        "3":"green",
+        "4":"blue",
+        "5":"purple",
+        "6":"orange",
+        "7":"green",
+        "8":"pink",
+        "9":"yellow"
     }
     
-    is_colored = False
+    # is_colored = True
     
     @classmethod
     def set_window(cls, window_from_parent):
         cls.window = window_from_parent
 
-    @classmethod
-    def set_is_colored(cls, is_colored):
-        cls.is_colored = is_colored
+    # @classmethod
+    # def set_is_colored(cls, is_colored):
+    #     cls.is_colored = is_colored
 
 
     def __init__(self, char):
@@ -117,6 +127,7 @@ class Grapheme:
             self.__char = str(char)        # self.__char is a string of len 1 (python doesn't have char types)
         else:
             self.__char = ""
+        self.__is_colored = False
         self.__color = DEFAULT_FONT_COLOR         # initialize as default color
         self.__font_size = DEFAULT_FONT_SIZE
         self.set_font(DEFAULT_FONT_NAME)
@@ -129,11 +140,17 @@ class Grapheme:
     def __repr__(self):
         return str(self.__char)    
 
+    def set_colored(self, input_bool):
+        """ turns colorized display mode on/off """
+        assert isinstance(input_bool, bool), "Input variable must be a boolean"
+        self.__is_colored = input_bool
+
     def __generate_color(self):
         """ If the grapheme is in SYN_COLORS, this generates 
             and assigns the synesthetic color to the grapheme. 
         """
-        if not Grapheme.is_colored:
+        # if not Grapheme.is_colored:
+        if not self.__is_colored:
             return
         temp = Grapheme.SYN_COLORS.get(str(self.__char).upper())
         if temp:
@@ -149,6 +166,12 @@ class Grapheme:
         # Note: is_colored is now a class attribute, rather than a parameter
         if not self.__char:
             return
+        
+        assert isinstance(x, int), "x must be an integer"
+        assert isinstance(y, int), "y must be an integer"
+        assert isinstance(surface, pygame.Surface), "surface must be an object of type pygame.Surface"
+        
+        
         # if not self.__text_image: 
         # font.render(text, antialias, color, background=None)       
         self.__text_image = self.__font.render(self.__char,
