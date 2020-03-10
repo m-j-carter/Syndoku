@@ -127,16 +127,23 @@ class Sudoku:
         screen_rect = self.__window.get_surface()
         screen_rect.fill(WINDOW_BACKGROUND_COLOR)
         
+        i = 0       # i is used to calculate the background color of the cells
+        color_switch = True
         for row in range(self.__board_size):
             for col in range(self.__board_size):
                 
-                # border color is calculated by ...
-                # if BORDER_COLOR_MATRIX[row][col]:
-                #     bg_color = CELL_COLOR_DEFAULT_A
-                #     border_color = CELL_BORDER_COLOR_A
-                # else:
-                #     bg_color = CELL_COLOR_DEFAULT_B
-                #     border_color = CELL_BORDER_COLOR_B
+                # border color is determined by the state of color_switch...
+                if i >= self.__subgrid_size:
+                    # toggle color_switch, reset i
+                    color_switch = not color_switch
+                    i=0
+                if color_switch:
+                    bg_color = CELL_COLOR_DEFAULT_A
+                    border_color = CELL_BORDER_COLOR_A
+                else:
+                    bg_color = CELL_COLOR_DEFAULT_B
+                    border_color = CELL_BORDER_COLOR_B
+                i+=1
 
                 # calculate x,y of the cell
                 x = BOARD_ORIGIN_X + (col * CELL_SIZE)
@@ -547,7 +554,7 @@ if __name__ == "__main__":
 
     test_window = Window("Test Sudoku", 500, 500)
     test_window.set_auto_update(False)
-    test_game = Sudoku(test_window, 'ABCDEFGHI')
+    test_game = Sudoku(test_window, 3, 'ABCDEFGHI')
     # generate the test board
     for row in range(len(test_board)):
         for col in range(len(test_board[row])):
