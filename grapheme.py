@@ -111,17 +111,12 @@ class Grapheme:
         "9":"yellow"
     }
     
-    # is_colored = True
     
     @classmethod
     def set_window(cls, window_from_parent):
         cls.window = window_from_parent
 
-    # @classmethod
-    # def set_is_colored(cls, is_colored):
-    #     cls.is_colored = is_colored
-
-
+    
     def __init__(self, char):
         if char:
             self.__char = str(char)        # self.__char is a string of len 1 (python doesn't have char types)
