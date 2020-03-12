@@ -21,10 +21,10 @@
 #     the dict SYN_COLORS
 
 import pygame
+import yaml
 
-DEFAULT_FONT_COLOR = pygame.Color('black')
-DEFAULT_FONT_SIZE = 24
-DEFAULT_FONT_NAME = 'arial'
+config = yaml.safe_load(open("config.yml"))
+
 
 pygame.init()
 
@@ -123,9 +123,9 @@ class Grapheme:
         else:
             self.__char = ""
         self.__is_colored = False
-        self.__color = DEFAULT_FONT_COLOR         # initialize as default color
-        self.__font_size = DEFAULT_FONT_SIZE
-        self.set_font(DEFAULT_FONT_NAME)
+        self.__color = pygame.Color( config['font']['color']['default'] )         # initialize as default color
+        self.__font_size = config['font']['size']
+        self.set_font(config['font']['name'])
         self.__text_image = None
         self.__generate_color()
 

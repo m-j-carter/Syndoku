@@ -32,52 +32,10 @@ from uagame import Window
 import pygame as pg
 import time
 import queue
+import yaml
 
-
-## Window Settings ##
-FRAMERATE = 30
-BOARD_ORIGIN_X = 70            # the top-left corner of the board 
-BOARD_ORIGIN_Y = 70    
-SOLUTION_ORIGIN_X = 200         # top-left corner of the solution string
-SOLUTION_ORIGIN_Y = 15
-CELL_SIZE = 40
-
-## SUDOKU BOARD SETTINGS
-# BOARD_SIZE
-
-CELL_BORDER_WIDTH = 1
-
-## Color Settings ##
-CELL_COLOR_HOVERED = pg.Color("lightyellow")
-CELL_COLOR_CLICKED = pg.Color("gold")
-CELL_COLOR_VALID = pg.Color("lightgreen")
-CELL_COLOR_INVALID = pg.Color("red")
-# Colors of the cell backgrounds:
-CELL_COLOR_DEFAULT_A = pg.Color("white")
-CELL_COLOR_DEFAULT_B = pg.Color("lightgrey")  
-# Colors of the grid:
-CELL_BORDER_COLOR_A = pg.Color("black")
-CELL_BORDER_COLOR_B = pg.Color("black")
-
-FONT_COLOR_DEFAULT_EDITABLE = pg.Color("black")
-FONT_COLOR_DEFAULT_UNEDITABLE = pg.Color("grey")
-WINDOW_BACKGROUND_COLOR = pg.Color("white")
-
-IGNORE_CAPS = True      # if caps are ignored, then it will default everything to caps
-
-# BORDER_COLOR_MATRIX is just a temporary solution for choosing border colors.
-# It should actually be calculated so that it is scalable. 
-BORDER_COLOR_MATRIX = [[0,0,0,1,1,1,0,0,0],
-                       [0,0,0,1,1,1,0,0,0],
-                       [0,0,0,1,1,1,0,0,0],
-                       [1,1,1,0,0,0,1,1,1],
-                       [1,1,1,0,0,0,1,1,1],
-                       [1,1,1,0,0,0,1,1,1],
-                       [0,0,0,1,1,1,0,0,0],
-                       [0,0,0,1,1,1,0,0,0],
-                       [0,0,0,1,1,1,0,0,0],
-                       ]
-
+# can't use yaml.safe_load() b/c the config file includes pygame objects
+config = yaml.safe_load(open("config.yml"))
 
 class Sudoku:
     """ This class represents everything needed to handle the game logic and 
@@ -85,6 +43,7 @@ class Sudoku:
         solution_set represents the set of characters required in each unit, 
         row, and column for the puzzle to be solved. 
     """
+
     def __init__(self, window, subgrid_size, solution):
 
         assert len(solution) == len(set(solution)), "Each character in the solution must be unique"        
@@ -117,49 +76,57 @@ class Sudoku:
         self.__create_board()
 
     def __create_board(self):
-        """ create a board that is n*n cells """
+        """ creates a board that is n*n cells, dynamically setting the
+            cell background colors according to the subgrid_size. """
         Cell.set_window(self.__window)
 
         # Set up the window
-        self.__window.set_bg_color(WINDOW_BACKGROUND_COLOR)
-        self.__window.set_font_color(FONT_COLOR_DEFAULT_EDITABLE)
+        self.__window.set_bg_color( pg.Color( config['window']['background_color'] ) )
+        self.__window.set_font_color( pg.Color( config['font']['color']['default'] ) )
         self.__window.set_auto_update(False)
 
         screen_rect = self.__window.get_surface()
-        screen_rect.fill(WINDOW_BACKGROUND_COLOR)
+        screen_rect.fill(pg.Color( config['window']['background_color'] ))
         
-        i = 0       # i is used to calculate the background color of the cells
+        j=0       # i and j are used to calculate the background color of the cells
         color_switch = True
         for row in range(self.__board_size):
+            i=0
             for col in range(self.__board_size):
                 
-                # border color is determined by the state of color_switch...
+                # Determine the color of the cell background
                 if i >= self.__subgrid_size:
-                    # toggle color_switch, reset i
                     color_switch = not color_switch
                     i=0
+                if j >= self.__subgrid_size:
+                    color_switch = not color_switch
+                    j=0
                 if color_switch:
-                    bg_color = CELL_COLOR_DEFAULT_A
-                    border_color = CELL_BORDER_COLOR_A
+                    bg_color = pg.Color( config['cell']['color']['default_a'] )
+                    border_color = pg.Color( config['cell']['border']['color_a'] )
                 else:
-                    bg_color = CELL_COLOR_DEFAULT_B
-                    border_color = CELL_BORDER_COLOR_B
-                i+=1
+                    bg_color = pg.Color( config['cell']['color']['default_b'] )
+                    border_color = pg.Color( config['cell']['border']['color_b'] )
 
                 # calculate x,y of the cell
-                x = BOARD_ORIGIN_X + (col * CELL_SIZE)
-                y = BOARD_ORIGIN_Y + (row * CELL_SIZE)
+                x = config['window']['board']['origin_x'] + (col * config['cell']['size'])
+                y = config['window']['board']['origin_y'] + (row * config['cell']['size'])
+                
                 # create the cell
                 self.__board[row][col] = Cell(bg_color, border_color, x, y) 
+                
                 # add the cell to the queue to be updated
                 self.__update_queue.put(self.__board[row][col])
+
+                i+=1
+            j+=1
 
     def manually_set_cell(self, row, col, character):
         """ Manually sets the cell at the specified position to the character
             specified. Use this iteratively to create an initial game board.
             Note that this also automatically sets the cell to be read-only.
         """ 
-        if IGNORE_CAPS:
+        if config['game']['ignore_caps']:
             character = character.upper()
         self.__board[row][col].set_char(character)
         self.__board[row][col].set_editable(False)
@@ -175,12 +142,12 @@ class Sudoku:
             self.__draw_board()
             self.__check_complete()
             self.__window.update()
-            self.__clock.tick(FRAMERATE)    
+            self.__clock.tick(config['window']['framerate'])    
 
     def __draw_solution(self):
         """ draw the solution/hint """
-        y = SOLUTION_ORIGIN_Y
-        x = SOLUTION_ORIGIN_X
+        y = config['window']['solution']['origin_y']
+        x = config['window']['solution']['origin_x']
         # surface is a temporary solution, might change to its own rect or something
         surface = self.__window.get_surface()   
         for  item in self.__solution:
@@ -221,13 +188,19 @@ class Sudoku:
             self.__delete_char = True
         else:                    
             for grapheme in self.__solution:
-                if IGNORE_CAPS:
+                if config['game']['ignore_caps']:
                     # set both to uppercase, that way caps doesn't affect it
                     ch = grapheme.get_grapheme().upper()
                     keyname = pg.key.name(key).upper()
                 else:
                     ch = grapheme.get_grapheme()
                     keyname = pg.key.name(key)
+                    # handle shift or capslock
+                    if pg.key.get_mods() & pg.KMOD_LSHIFT or \
+                       pg.key.get_mods() & pg.KMOD_RSHIFT or \
+                       pg.key.get_mods() & pg.KMOD_CAPS:
+                       keyname = keyname.upper()
+
                 if keyname == ch:
                     self.__key_pressed_str = keyname
 
@@ -251,10 +224,9 @@ class Sudoku:
 
                 else:
                     if cell is not self.__clicked_cell and \
-                        cell.get_color() not in (CELL_COLOR_DEFAULT_A,
-                                                 CELL_COLOR_DEFAULT_B,
-                                                 CELL_COLOR_VALID
-                                                #  CELL_COLOR_INVALID
+                        cell.get_color() not in (pg.Color( config['cell']['color']['default_a'] ),
+                                                 pg.Color( config['cell']['color']['default_b'] ),                                                
+                                                 pg.Color( config['cell']['color']['valid'] )
                                                  ):
                         # cell.reset_color()
                         cell.change_color()
@@ -288,7 +260,7 @@ class Sudoku:
     def __handle_cell_hovered(self, cell):
         """ Carry out the changes for when a specified cell is hovered over """
         self.__update_queue.put(cell)
-        cell.change_color(CELL_COLOR_HOVERED)
+        cell.change_color(pg.Color( config['cell']['color']['hovered'] ))
       
 ### Sudoku Game Logic: ###
 
@@ -387,7 +359,7 @@ class Sudoku:
         # Since they're valid, recolor the cells
         # print("valid segment!")
         for cell in cell_list:
-            cell.change_color(CELL_COLOR_VALID)
+            cell.change_color(pg.Color( config['cell']['color']['valid'] ))
             self.__update_queue.put(cell)
 
         return True
@@ -428,7 +400,7 @@ class Cell:
         # I actually don't need self.__x or sel.__y, but methods still use it
         self.__x = x
         self.__y = y
-        self.__size = CELL_SIZE
+        self.__size = config['cell']['size']
         self.__rect = pg.Rect((self.__x, self.__y), 
                               (self.__size, self.__size))
 
@@ -461,8 +433,8 @@ class Cell:
         
         surface.fill(self.__border_color, self.__rect)
         surface.fill(self.__color, 
-                     self.__rect.inflate(-CELL_BORDER_WIDTH*2, 
-                                         -CELL_BORDER_WIDTH*2))
+                     self.__rect.inflate(-config['cell']['border']['width'] * 2, 
+                                         -config['cell']['border']['width'] * 2))
 
     def change_color(self, color=None):
         """ Changes the background color of the cell.
@@ -476,14 +448,18 @@ class Cell:
             # currently invalid, so don't change its color
             return
         if color:
-            self.__color = color
+            # handle both color name strings and pygame.Color objects
+            if isinstance(color, pg.Color):
+                self.__color = color
+            elif isinstance(color, str):
+                self.__color = pg.Color(color)
         else:
             self.__color = self.__bg_color
 
     def set_invalid(self):
         """ set the cell to its invalid state. """
         self.__set_invalid_at_ms = time.time()*1000.0
-        self.__color = CELL_COLOR_INVALID
+        self.__color = pg.Color( config['cell']['color']['invalid'] )
 
     def __check_invalid(self):
         """ check if the cell is in the invalid state """
@@ -513,7 +489,7 @@ class Cell:
         """ sets is_clicked to True and changes color when clicked """
         if not self.__is_clicked:
             self.__is_clicked = True
-            self.change_color(CELL_COLOR_CLICKED) 
+            self.change_color(pg.Color( config['cell']['color']['clicked'] )) 
 
     def unclick(self):
         """ unclicks the cell, changing its colour back """

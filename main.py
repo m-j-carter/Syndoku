@@ -15,7 +15,7 @@ from pygame.locals import *
 from uagame import Window
 from grapheme import Grapheme
 from sudoku import Sudoku
-
+# import config
 
 ### PARAMETERS ###
 

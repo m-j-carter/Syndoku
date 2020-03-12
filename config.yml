@@ -1,0 +1,44 @@
+##    Michael Carter        ##
+##    mjcarter@ualberta.ca  ##
+##    February/March 2020   ##
+
+# Edit these constants to easily change parameters.
+# Note: All color names must be pygame.Color-compatible
+
+### Font Settings ###
+font:
+    color:
+        default:    "black"
+        editable:   "black"
+        uneditable: "grey"
+    size:       24
+    name:       "arial"
+
+### Sudoku Board Settings ###
+game:
+    ignore_caps:        True    # if caps are ignored, then it will default everything to caps
+window:
+    background_color:   "white"
+    framerate:          30      # frames per second
+    board:
+        origin_x:       70      # the top-left corner of the board in pixels
+        origin_y:       70
+    solution:
+        origin_x:       200     # top-left corner of the solution string
+        origin_y:       15
+
+### Cell Settings ###
+cell:
+    size:       40      # number of pixels tall/wide
+    border:
+        width:      1
+        color_a:    "black"
+        color_b:    "black"
+    color:
+        # Colors of the cell backgrounds:
+        default_a:  "white"
+        default_b:  "lightgrey"
+        hovered:    "lightyellow"
+        clicked:    "gold"
+        valid:      "lightgreen"
+        invalid:    "red"
