@@ -92,6 +92,7 @@ class Sudoku:
 
         self.__board_size = len(solution)
         self.__subgrid_size = subgrid_size
+        
         # create the solution set:
         self.__solution = []                    # self.__solution is a list that contains objects of the class Grapheme
         self.__solution_set = set()
@@ -221,11 +222,14 @@ class Sudoku:
         else:                    
             for grapheme in self.__solution:
                 if IGNORE_CAPS:
+                    # set both to uppercase, that way caps doesn't affect it
                     ch = grapheme.get_grapheme().upper()
+                    keyname = pg.key.name(key).upper()
                 else:
                     ch = grapheme.get_grapheme()
-                if pg.key.name(key) == ch:
-                    self.__key_pressed_str = pg.key.name(key)
+                    keyname = pg.key.name(key)
+                if keyname == ch:
+                    self.__key_pressed_str = keyname
 
     def __update_board(self):
         """ Checks and updates each cell to change their color when 
@@ -528,6 +532,7 @@ class Cell:
 
 # For debugging only, since the class is only supposed to be called from main.py
 if __name__ == "__main__":
+    
     # test_board = [['8','7','6','9','','','','',''],
     #               ['','1','','','','6','','',''],
     #               ['','4','','','','5','8','',''],
@@ -549,12 +554,11 @@ if __name__ == "__main__":
                   ['','','','','','A','','','D']
                   ]
 
-
-
-
     test_window = Window("Test Sudoku", 500, 500)
     test_window.set_auto_update(False)
+    # test_game = Sudoku(test_window, 3, '123456789')
     test_game = Sudoku(test_window, 3, 'ABCDEFGHI')
+
     # generate the test board
     for row in range(len(test_board)):
         for col in range(len(test_board[row])):
